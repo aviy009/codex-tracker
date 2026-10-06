@@ -1,8 +1,10 @@
 # Codex Session Tracker
 
-A tiny local web app that lists your [Codex](https://openai.com/codex) sessions (Codex Desktop, IDE extension and CLI)
-as a tree, with status, and lets you keep your own notes per session: goal, now, next, later, a log, and a linked
-GitHub issue. Useful when you run many sessions and forks in parallel over days and lose track of what each one is doing.
+A tiny local web app for people who run many [Codex](https://openai.com/codex) sessions in parallel over days. It shows
+all your sessions (Codex Desktop, IDE extension and CLI) as a tree, **with forks and spawned subagents nested under the
+session they came from**, and lets you keep your own notes per session: goal, now, next, later, a log, and a linked
+GitHub issue. When you come back to a session, click **Summarize** to get an on-demand summary of your conversation with
+Codex: the goal, what was done, the current state, blockers and a suggested next step.
 
 > Screenshot: _TODO_
 
