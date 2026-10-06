@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Codex Session Tracker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{--bg:#0f1115;--panel:#161922;--line:#262b38;--fg:#e6e8ee;--mut:#8b93a7;--acc:#6ea8fe;
+--active:#3ddc84;--recent:#f5c542;--idle:#6b7280;--archived:#4b5060;--fork:#c084fc;--spawn:#60a5fa}
+*{box-sizing:border-box}
+body{margin:0;font:13px/1.4 system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--fg);height:100vh;display:flex;flex-direction:column}
+header{display:flex;gap:10px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-size:15px;margin:0 8px 0 0}
+input,textarea,select,button{font:inherit;color:var(--fg);background:#0b0d12;border:1px solid var(--line);border-radius:6px}
+input[type=search]{padding:5px 8px;width:260px}
+button{padding:4px 10px;cursor:pointer}button:hover{border-color:var(--acc)}
+label.f{color:var(--mut);display:flex;gap:4px;align-items:center;user-select:none}
+#stats{color:var(--mut);margin-left:auto}
+main{flex:1;display:flex;min-height:0}
+#list{flex:1;overflow:auto;min-width:0}
+#side{width:460px;border-left:1px solid var(--line);background:var(--panel);overflow:auto;padding:12px 14px;display:none}
+#side.open{display:block}
+table{border-collapse:collapse;width:100%;table-layout:fixed}
+th{position:sticky;top:0;background:var(--bg);text-align:left;color:var(--mut);font-weight:500;padding:6px 8px;border-bottom:1px solid var(--line);z-index:1}
+td{padding:4px 8px;border-bottom:1px solid #1b1f2a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+tr.row{cursor:pointer}tr.row:hover td{background:#171b25}tr.row.sel td{background:#1d2433}
+tr.grp td{background:#12151c;color:var(--acc);font-weight:600;cursor:pointer;padding-top:8px}
+tr.grp .cnt{color:var(--mut);font-weight:400;margin-left:6px}
+.tw{display:inline-block;width:16px;color:var(--mut);text-align:center}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.st-active{background:var(--active)}.st-recent{background:var(--recent)}.st-idle{background:var(--idle)}.st-archived{background:var(--archived)}.st-cloud{background:#38bdf8}
+.plink{cursor:pointer}
+.btn-link{display:inline-block;padding:4px 10px;border-radius:6px;background:#1f3a5f;border:1px solid #2f5d93;color:#e6f0ff;text-decoration:none;white-space:nowrap;font-weight:500}
+.btn-link:hover{background:#28507f}
+code.url{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px}
+a.oc{display:inline-block;width:16px;text-align:center;color:var(--mut);text-decoration:none;margin-right:2px;border-radius:3px}
+a.oc:hover{color:var(--acc);background:#1d2433}.plink:hover{border-color:var(--fork)}
+.badge{display:inline-block;font-size:11px;padding:0 5px;border-radius:4px;border:1px solid var(--line);color:var(--mut);margin-left:4px}
+.b-fork{color:var(--fork);border-color:#5b3b7a}.b-spawn{color:var(--spawn);border-color:#2b4a72}.b-open{color:var(--active)}.b-closed{color:var(--mut)}
+.b-pin{color:var(--recent)}
+.next{color:#f0f0a8}.next.empty{color:#4a5060}
+.mut{color:var(--mut)}
+.sub td.t{color:#b8bfcf}
+#side h2{font-size:15px;margin:0 0 4px}
+.kv{display:grid;grid-template-columns:80px 1fr;gap:2px 8px;margin:8px 0;color:var(--mut)}
+.kv div:nth-child(even){color:var(--fg);word-break:break-all}
+.sect{margin-top:12px;border-top:1px solid var(--line);padding-top:8px}
+.sect h3{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin:0 0 6px}
+textarea{width:100%;padding:6px;resize:vertical;min-height:38px}
+textarea.log{min-height:120px;font-family:ui-monospace,Consolas,monospace;font-size:12px}
+.fld{margin-bottom:6px}.fld label{display:block;color:var(--mut);font-size:12px;margin-bottom:2px}
+.fld.nextf textarea{border-color:#5a5a2a}
+.row2{display:flex;gap:6px;align-items:center}
+a{color:var(--acc)}
+pre{white-space:pre-wrap;word-break:break-word;background:#0b0d12;padding:6px;border-radius:6px;max-height:180px;overflow:auto;margin:0}
+#saved{font-size:12px;color:var(--mut);margin-left:6px}
+.issue-ok{color:var(--active)}.issue-closed{color:#c084fc}.err{color:#f87171}
+.summary{background:#0b0d12;padding:8px;border-radius:6px;max-height:340px;overflow:auto;font-size:12.5px;line-height:1.45}
+.summary h2{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);margin:10px 0 2px}
+.summary h2:first-child{margin-top:0}
+.summary ul{margin:2px 0 0 16px;padding:0}
+.summary li{margin:1px 0}
+.summary p{margin:2px 0}
+.spin{display:inline-block;width:10px;height:10px;border:2px solid var(--mut);border-top-color:var(--acc);border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:4px}
+@keyframes sp{to{transform:rotate(360deg)}}
+code{background:#0b0d12;padding:1px 4px;border-radius:4px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Codex Sessions</h1>
+  <input id="q" type="search" placeholder="Search title, notes, branch, cwd, id…">
+  <label class="f"><input type="checkbox" id="fGuard" checked>hide guardian</label>
+  <label class="f"><input type="checkbox" id="fReview" checked>hide review</label>
+  <label class="f"><input type="checkbox" id="fSub">hide spawned subagents</label>
+  <label class="f"><input type="checkbox" id="fSum" checked>hide summarizer</label>
+  <label class="f"><input type="checkbox" id="fArch" checked>hide archived</label>
+  <label class="f"><input type="checkbox" id="fNotes">only with notes</label>
+  <label class="f">Group: <select id="grp"><option value="group">Sections + repo + folder</option><option value="sections">Sections only</option><option value="repo">Repo only</option><option value="none">No grouping</option></select></label>
+  <button id="expAll" title="Expand all">⊞</button><button id="colAll" title="Collapse all">⊟</button>
+  <button id="refresh">↻</button>
+  <span id="stats"></span>
+</header>
+<main>
+  <div id="list"><table><colgroup><col style="width:42%"><col style="width:130px"><col><col style="width:170px"><col style="width:90px"></colgroup>
+    <thead><tr><th>Session</th><th>Status</th><th>Next step</th><th>Issue / branch</th><th>Updated</th></tr></thead>
+    <tbody id="tb"></tbody></table></div>
+  <aside id="side"></aside>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const LS = k => JSON.parse(localStorage.getItem('ct.'+k) || 'null');
+const SS = (k,v) => localStorage.setItem('ct.'+k, JSON.stringify(v));
+let DATA = null, BY = {}, KIDS = {}, SEL = location.hash.slice(1) || LS('sel'), EXP = new Set(LS('exp') || []), GCOL = new Set(LS('gcol') || []);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function ago(ms){ if(!ms) return ''; const s=(DATA.now-ms)/1000; if(s<60) return 'now'; if(s<3600) return Math.floor(s/60)+'m'; if(s<86400) return Math.floor(s/3600)+'h'; if(s<86400*30) return Math.floor(s/86400)+'d'; return new Date(ms).toLocaleDateString(); }
+const fmt = ms => ms ? new Date(ms).toLocaleString() : '';
+for (const id of ['fGuard','fReview','fSub','fSum','fArch','fNotes']) { const v = LS(id); if (v !== null) $('#'+id).checked = v; $('#'+id).onchange = () => { SS(id, $('#'+id).checked); render(); }; }
+const GMODES = ['group','sections','repo','none'];
+function setUrlGroup(v){ const u = new URL(location.href); if (v === 'group') u.searchParams.delete('group'); else u.searchParams.set('group', v); history.replaceState(null, '', u); }
+{ const g = new URLSearchParams(location.search).get('group'); const v = GMODES.includes(g) ? g : (GMODES.includes(LS('grp')) ? LS('grp') : 'group'); $('#grp').value = v; if (GMODES.includes(g)) SS('grp', g); setUrlGroup(v); }
+$('#grp').onchange = () => { SS('grp', $('#grp').value); setUrlGroup($('#grp').value); render(); };
+const NOSEC = 'No section';
+let qT; $('#q').oninput = () => { clearTimeout(qT); qT = setTimeout(render, 150); };
+$('#refresh').onclick = () => load(true);
+$('#expAll').onclick = () => { for (const id in KIDS) EXP.add(id); GCOL.clear(); SS('exp',[...EXP]); SS('gcol',[]); render(); };
+$('#colAll').onclick = () => { EXP.clear(); SS('exp',[]); render(); };
+
+async function load(force){
+  try {
+    const r = await fetch('/api/sessions' + (force ? '?refresh=1' : ''));
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    DATA = d; BY = {}; KIDS = {};
+    for (const s of d.sessions) BY[s.id] = s;
+    if (SEL && BY[SEL] && !$('#side').classList.contains('open')){ let p = BY[SEL].parent; while (p && BY[p]){ EXP.add(p); p = BY[p].parent; } render(); openSide(SEL); } else render();
+  } catch (e) { $('#stats').innerHTML = '<span class="err">'+esc(e.message)+'</span>'; }
+}
+
+function visible(s, f){
+  if (f.guard && s.kind === 'guardian') return false;
+  if (f.review && s.kind === 'review') return false;
+  if (f.sub && s.kind === 'subagent') return false;
+  if (f.sum && s.kind === 'summarizer') return false;
+  if (f.arch && s.archived) return false;
+  return true;
+}
+function matches(s, q){
+  if (!q) return true;
+  const n = DATA._notesText?.[s.id] || '';
+  return [s.title,s.cwd,s.branch,s.repo,s.id,s.note_next,s.note_now,s.note_goal,s.issue,s.section,s.preview,s.summary].join(' ').toLowerCase().includes(q);
+}
+function render(){
+  if (!DATA) return;
+  const f = {guard:$('#fGuard').checked, review:$('#fReview').checked, sub:$('#fSub').checked, sum:$('#fSum').checked, arch:$('#fArch').checked, notes:$('#fNotes').checked};
+  const q = $('#q').value.trim().toLowerCase();
+  const gmode = $('#grp').value, SEC = gmode === 'sections';
+  const vis = {}; for (const s of DATA.sessions) if (visible(s, f)) vis[s.id] = s;
+  // effective section: spawned subagents live with their parent; every other session uses its own sidebar section
+  const esec = {};
+  const effSec = id => { if (id in esec) return esec[id]; esec[id] = NOSEC; const s = BY[id]; return esec[id] = (s.rel === 'spawn' && s.parent && BY[s.parent]) ? effSec(s.parent) : (s.section || NOSEC); };
+  const member = id => vis[id].rel !== 'spawn';  // counts as a sidebar item of its section
+  // nearest visible ancestor = tree parent (so a child of a hidden/archived parent floats up)
+  const par = {}, xfork = {}; KIDS = {};
+  for (const id in vis){
+    let p = vis[id].parent, seen = 0; while (p && !vis[p] && BY[p] && seen++ < 50) p = BY[p].parent;
+    par[id] = (p && vis[p]) ? p : null;
+    // sections mode: a fork nests only under a parent in the same section; otherwise it is a row of its own section
+    if (SEC && par[id] && member(id) && effSec(par[id]) !== effSec(id)){ xfork[id] = par[id]; par[id] = null; }
+    if (par[id]) (KIDS[par[id]] ||= []).push(id);
+  }
+  // search / notes filter: keep matching nodes + their ancestors
+  let keep = null;
+  if (q || f.notes){
+    keep = new Set();
+    for (const id in vis){ const s = vis[id];
+      if ((!q || matches(s,q)) && (!f.notes || s.has_notes)){ let x = id; while (x && !keep.has(x)){ keep.add(x); x = par[x]; } }
+    }
+  }
+  const lastAct = {}; const act = id => lastAct[id] ??= Math.max(vis[id].recency||0, vis[id].updated||0, ...(KIDS[id]||[]).map(act));
+  const secPos = id => (SEC && vis[id].section_pos != null && effSec(id) !== NOSEC) ? vis[id].section_pos : Infinity;
+  const sortIds = ids => ids.sort((a,b) => (secPos(a) - secPos(b)) || (vis[b].pinned - vis[a].pinned) || act(b) - act(a));
+  const roots = sortIds(Object.keys(vis).filter(id => !par[id] && (!keep || keep.has(id))));
+  const groups = new Map();
+  for (const id of roots){ const s = vis[id]; const g = gmode === 'none' ? '' : SEC ? effSec(id) : gmode === 'repo' ? (s.repo || s.cwd.split(/[\\/]/).filter(Boolean).pop() || '(no folder)') : s.group; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(id); }
+  const gcount = {};
+  if (SEC){  // Codex sidebar order, 'No section' always last; count = sidebar items of that section
+    const order = DATA.sections || [], oi = g => g === NOSEC ? 1e9 : (order.indexOf(g) < 0 ? 1e8 : order.indexOf(g));
+    const ent = [...groups.entries()].sort((x, y) => oi(x[0]) - oi(y[0]) || Math.max(...y[1].map(act)) - Math.max(...x[1].map(act)));
+    groups.clear(); for (const [k, v] of ent) groups.set(k, v);
+    for (const id in vis) if (member(id) && (!keep || keep.has(id))){ const g = effSec(id); gcount[g] = (gcount[g] || 0) + 1; }
+  }
+  const html = []; let shown = 0;
+  const row = (id, depth) => {
+    const s = vis[id]; shown++;
+    const kids = sortIds((KIDS[id]||[]).filter(k => !keep || keep.has(k)));
+    // sections mode: same-section forks are sidebar items, so they are always visible
+    const always = SEC ? kids.filter(k => member(k) && vis[k].section && effSec(k) === effSec(id)) : [];
+    const extra = kids.length - always.length;
+    const open = EXP.has(id) || (q && kids.length);
+    const showKids = open ? kids : always;
+    const tw = extra ? `<span class="tw" data-tog="${id}">${open?'▾':'▸'}</span>` : '<span class="tw"></span>';
+    const relB = s.rel === 'fork' || s.rel === 'agent-fork' ? `<span class="badge b-fork">${s.rel}</span>` : s.rel === 'spawn' ? `<span class="badge b-spawn">${esc(s.role || 'subagent')}</span>` : (s.kind!=='user' ? `<span class="badge">${s.kind}</span>`:'');
+    const xf = xfork[id] ? `<span class="badge b-fork plink" data-open="${xfork[id]}" title="Forked from a session in ${esc(effSec(xfork[id]))} - click to open it">↰ ${esc((BY[xfork[id]]?.title || '').slice(0, 40))}</span>` : '';
+    const cnt = extra ? `<span class="badge" title="${extra} more (subagents / other)">+${extra}</span>` : '';
+    const pin = s.pinned ? '<span class="badge b-pin">★</span>' : '';
+    const edge = s.edge_status ? `<span class="badge b-${s.edge_status}">${s.edge_status}</span>` : '';
+    const iss = s.issue ? `<span class="badge">${esc(s.issue)}</span> ` : (s.suggested_issue ? `<span class="mut">#${s.suggested_issue}?</span> ` : '');
+    const nxt = s.note_next ? `<span class="next">${esc(s.note_next.split('\n')[0])}</span>` : (s.note_now ? `<span class="mut">now: ${esc(s.note_now.split('\n')[0])}</span>` : '<span class="next empty">—</span>');
+    html.push(`<tr class="row ${depth?'sub':''} ${id===SEL?'sel':''}" data-id="${id}"><td class="t" title="${esc(s.title)}" style="padding-left:${8+depth*18}px">${tw}${s.open_url ? `<a class="oc" href="${esc(s.open_url)}"${s.kind==='cloud'?' target="_blank" rel="noopener"':''} title="${s.kind==='cloud'?'Open in Codex Cloud':'Open in Codex'}">↗</a>` : ''}${esc(s.title)}${pin}${relB}${xf}${cnt}</td>
+      <td><span class="dot st-${s.status}"></span>${s.status}${edge}</td><td title="${esc(s.note_next)}">${nxt}</td>
+      <td title="${esc(s.branch||'')}">${iss}<span class="mut">${esc(s.branch||'')}</span></td><td class="mut" title="${fmt(s.updated)}">${ago(Math.max(s.updated,s.recency))}</td></tr>`);
+    for (const k of showKids) row(k, depth+1);
+  };
+  for (const [g, ids] of groups){
+    const n = SEC ? (gcount[g] || ids.length) : ids.length;
+    if (gmode !== 'none'){ const c = GCOL.has(g); html.push(`<tr class="grp" data-g="${esc(g)}" data-count="${n}"><td colspan="5"><span class="tw">${c?'▸':'▾'}</span>${esc(g)}<span class="cnt">${n}</span></td></tr>`); if (c) continue; }
+    for (const id of ids) row(id, 0);
+  }
+  $('#tb').innerHTML = html.join('') || '<tr><td colspan="5" class="mut">No sessions match.</td></tr>';
+  const k = DATA.kinds; $('#stats').textContent = `${shown} shown · ${DATA.total} threads (user ${k.user||0}, subagent ${k.subagent||0}, guardian ${k.guardian||0}, review ${k.review||0}${k.cloud?', cloud '+k.cloud:''}) · ${DATA.forks} forks`;
+}
+$('#tb').onclick = e => {
+  if (e.target.closest('a.oc')) return;  // plain link: let the browser hand codex:// to Codex Desktop
+  const po = e.target.closest('[data-open]');
+  if (po){ e.stopPropagation(); openSide(po.dataset.open); return; }
+  const t = e.target.closest('[data-tog]');
+  if (t){ const id = t.dataset.tog; EXP.has(id) ? EXP.delete(id) : EXP.add(id); SS('exp',[...EXP]); render(); return; }
+  const g = e.target.closest('tr.grp');
+  if (g){ const n = g.dataset.g; GCOL.has(n) ? GCOL.delete(n) : GCOL.add(n); SS('gcol',[...GCOL]); render(); return; }
+  const r = e.target.closest('tr.row'); if (r) openSide(r.dataset.id);
+};
+
+let saveT, curId = null;
+async function openSide(id){
+  SEL = id; SS('sel', id); curId = id; history.replaceState(null, '', location.pathname + location.search + '#' + id);
+  document.querySelectorAll('tr.row.sel').forEach(x => x.classList.remove('sel'));
+  document.querySelector(`tr.row[data-id="${id}"]`)?.classList.add('sel');
+  const side = $('#side'); side.classList.add('open'); side.innerHTML = '<span class="mut">Loading…</span>';
+  const s = await (await fetch('/api/session/' + encodeURIComponent(id))).json();
+  if (curId !== id) return;
+  if (s.error){ side.innerHTML = `<span class="err">${esc(s.error)}</span>`; return; }
+  const n = s.notes, url = s.open_url || `codex://threads/${s.id}`, isCloud = s.kind === 'cloud';
+  const anc = s.ancestors.length ? `<div class="mut">${s.ancestors.slice().reverse().map(a=>`<a href="#" data-open="${a.id}">${esc(a.title)}</a>`).join(' › ')} ›</div>` : '';
+  const kids = s.children.length ? `<div class="sect"><h3>Children (${s.children.length})</h3>${s.children.map(c=>`<div><span class="dot st-${c.status}"></span><a href="#" data-open="${c.id}">${esc(c.title)}</a> <span class="badge ${c.rel==='spawn'?'b-spawn':'b-fork'}">${c.rel==='spawn'?c.kind:c.rel}</span></div>`).join('')}</div>` : '';
+  const prs = s.prs.length ? s.prs.map((p,i)=>`<div><a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.url.replace('https://github.com/',''))}</a> <span class="mut" id="pr${i}"></span></div>`).join('') : '<span class="mut">none</span>';
+  const wts = s.worktrees.map(w=>`<div class="mut">${esc(w.root)}${w.archived?' (archived)':''}</div>`).join('');
+  const pn = s.parent_notes && (s.parent_notes.goal || s.parent_notes.next) ? `<div class="sect"><h3>Parent notes</h3>${s.parent_notes.goal?`<div><b>Goal:</b> ${esc(s.parent_notes.goal)}</div>`:''}${s.parent_notes.next?`<div><b>Next:</b> ${esc(s.parent_notes.next)}</div>`:''}</div>` : '';
+  const fld = (k, label, cls='') => `<div class="fld ${k==='next'?'nextf':''}"><label>${label}</label><textarea data-k="${k}" class="${cls}" rows="${k==='log'?6:2}">${esc(n[k]||'')}</textarea></div>`;
+  side.innerHTML = `${anc}<h2>${esc(s.title)}</h2>
+    <div class="row2"><span class="dot st-${s.status}"></span>${s.status}${s.edge_status?` <span class="badge b-${s.edge_status}">${s.edge_status}</span>`:''}${s.rel?` <span class="badge ${s.rel==='spawn'?'b-spawn':'b-fork'}">${s.rel}</span>`:''}<span class="badge">${s.kind}</span></div>
+    <div class="row2" style="margin-top:8px"><a class="btn-link" id="openC" href="${esc(url)}"${isCloud ? ' target="_blank" rel="noopener"' : ''}>${isCloud ? 'Open in Codex Cloud' : 'Open in Codex'}</a>
+      <code class="url" title="${esc(url)}">${esc(url)}</code><button id="cpl" title="Copy link">Copy link</button></div>
+    ${isCloud ? '<div class="mut" style="margin-top:4px">Codex Cloud task (title not stored locally)</div>' : ''}
+    <div class="kv"><div>Folder</div><div>${esc(s.cwd)}</div><div>Branch</div><div>${esc(s.branch||'')}</div><div>Repo</div><div>${esc(s.repo||'')}${s.repo_inferred?' <span class="mut">(inferred from folder)</span>':''}</div>
+      <div>Section</div><div>${esc(s.section||'')}</div><div>Model</div><div>${esc(s.model||'')} ${esc(s.reasoning_effort||'')}</div><div>Tokens</div><div>${s.tokens??''}</div>
+      <div>Created</div><div>${fmt(s.created)}</div><div>Updated</div><div>${fmt(s.updated)} (${ago(s.updated)} ago)</div><div>Id</div><div>${esc(s.id)}</div></div>
+    <div class="sect" id="sumSect"><h3>Summary <span id="sumState" class="mut"></span>
+      <button id="sumBtn" style="padding:0 8px;font-size:11px;margin-left:6px">Summarize</button>
+      <button id="sumNext" style="padding:0 8px;font-size:11px;display:none" title="Copy Suggested next step into Next">→ Next</button>
+    </h3>
+      <div id="sumWarn" class="err" style="display:none;margin-bottom:4px"></div>
+      <div id="sumBody" class="summary md"></div>
+    </div>
+    <div class="sect"><h3>Notes <span id="saved"></span></h3>
+      ${fld('goal','Goal')}${fld('now','Now')}${fld('next','Next step')}${fld('later','Later')}
+      <div class="fld"><label>Log <button id="stamp" style="padding:0 6px;font-size:11px">+ timestamp</button></label><textarea data-k="log" class="log" rows="6">${esc(n.log||'')}</textarea></div>
+    </div>
+    <div class="sect"><h3>GitHub issue</h3>
+      <div class="row2"><input id="iss" style="flex:1;padding:4px 6px" placeholder="#123, owner/repo#123 or URL" value="${esc(n.issue||'')}">${s.suggested_issue && !n.issue ? `<button id="sugg">Use #${s.suggested_issue}</button>`:''}</div>
+      <div id="issInfo" class="mut" style="margin-top:4px"></div></div>
+    <div class="sect"><h3>Pull requests</h3>${prs}${wts?`<h3 style="margin-top:8px">Worktrees</h3>${wts}`:''}</div>
+    ${pn}${kids}
+    <div class="sect"><h3>Last preview</h3><pre>${esc(s.preview_full||s.preview||'')}</pre></div>
+    <div class="sect"><h3>First message</h3><pre>${esc(s.first_user_message||'')}</pre></div>`;
+  side.querySelectorAll('[data-open]').forEach(a => a.onclick = ev => { ev.preventDefault(); openSide(a.dataset.open); });
+  $('#cpl').onclick = async () => { try { await navigator.clipboard.writeText(url); } catch { const t=document.createElement('textarea'); t.value=url; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); } $('#cpl').textContent='Copied'; setTimeout(()=>$('#cpl')&&($('#cpl').textContent='Copy link'),1200); };
+  side.querySelectorAll('textarea[data-k]').forEach(t => t.oninput = () => queueSave(id));
+  $('#iss').oninput = () => { queueSave(id); clearTimeout(issT); issT = setTimeout(() => lookupIssue(s), 700); };
+  $('#sugg') && ($('#sugg').onclick = () => { $('#iss').value = '#' + s.suggested_issue; queueSave(id); lookupIssue(s); $('#sugg').remove(); });
+  $('#stamp').onclick = () => { const t = side.querySelector('textarea.log'); const d = new Date(); const p = x=>String(x).padStart(2,'0'); t.value = `[${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}] \n` + t.value; t.focus(); t.setSelectionRange(t.value.indexOf('\n'), t.value.indexOf('\n')); queueSave(id); };
+  renderSummary(s.summary_info || {state:'idle'}, s.kind === 'cloud' || s.kind === 'summarizer' ? null : id);
+  $('#sumBtn').onclick = () => kickSummary(id);
+  $('#sumNext').onclick = () => { const n = nextStepFrom(window._lastSumText || (s.summary_info && s.summary_info.summary && s.summary_info.summary.text) || ''); if (!n) return; const t = side.querySelector('textarea[data-k="next"]'); t.value = n; queueSave(id); $('#sumNext').textContent = 'copied → Next'; setTimeout(()=>$('#sumNext')&&($('#sumNext').textContent='→ Next'),1200); };
+  lookupIssue(s);
+  s.prs.forEach(async (p,i) => { const r = await (await fetch('/api/pr?url='+encodeURIComponent(p.url))).json(); const el = $('#pr'+i); if (el && curId===id) el.innerHTML = r.ok ? `<span class="${r.state==='OPEN'?'issue-ok':'issue-closed'}">${esc(r.isDraft?'DRAFT':r.state)}</span> ${esc(r.title)}` : `<span class="err" title="${esc(r.error)}">gh error</span>`; });
+}
+let issT;
+async function lookupIssue(s){
+  const v = $('#iss')?.value.trim(), el = $('#issInfo'); if (!el) return;
+  if (!v){ el.textContent = s.suggested_issue ? `Branch suggests #${s.suggested_issue}${s.repo?' in '+s.repo:''}` : ''; return; }
+  el.textContent = 'Looking up…';
+  const r = await (await fetch(`/api/issue?ref=${encodeURIComponent(v)}&repo=${encodeURIComponent(s.repo||'')}`)).json();
+  if (curId !== s.id) return;
+  el.innerHTML = r.ok ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.repo)}#${r.number}</a> <span class="${r.state==='OPEN'?'issue-ok':'issue-closed'}">${esc(r.state)}</span> ${esc(r.title)}` : `<span class="err">${esc(r.error)}</span>`;
+}
+function queueSave(id){
+  $('#saved').textContent = 'editing…'; clearTimeout(saveT);
+  saveT = setTimeout(async () => {
+    const body = {}; document.querySelectorAll('#side textarea[data-k]').forEach(t => body[t.dataset.k] = t.value);
+    body.issue = $('#iss').value.trim();
+    try {
+      const r = await fetch('/api/notes/' + encodeURIComponent(id), {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+      const n = await r.json(); if (n.error) throw new Error(n.error);
+      if (BY[id]) Object.assign(BY[id], {note_next:n.next, note_now:n.now, note_goal:n.goal, issue:n.issue, has_notes: !!(n.goal||n.now||n.next||n.later||n.log||n.issue)});
+      if (curId === id) $('#saved').textContent = 'saved ' + new Date().toLocaleTimeString();
+      render();
+    } catch (e) { $('#saved').innerHTML = '<span class="err">save failed: '+esc(e.message)+'</span>'; }
+  }, 600);
+}
+function mdLite(t){
+  return esc(t||'').replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>').replace(/`([^`\n]+)`/g,'<code>$1</code>')
+    .replace(/^#{1,3} (.+)$/gm,'<h2>$1</h2>').replace(/^\s*[-*] (.+)$/gm,'<li>$1</li>')
+    .replace(/(?:<li>.*<\/li>\n?)+/g, m => '<ul>'+m.replace(/\n/g,'')+'</ul>')
+    .replace(/<\/h2>\n+/g,'</h2>').replace(/\n{2,}/g,'<br>').replace(/\n/g,'<br>');
+}
+function nextStepFrom(text){
+  const m = (text||'').match(/^#{1,3} Suggested next step[^\n]*\n([\s\S]*?)(?=\n#{1,3} |(?![\s\S]))/m);
+  return m ? m[1].replace(/^[-*]\s+/gm,'').trim() : '';
+}
+let sumPoll = null;
+function renderSummary(si, can){
+  const st = si.state || 'idle', sum = si.summary, body = $('#sumBody'), warn = $('#sumWarn'), btn = $('#sumBtn'), nx = $('#sumNext'), lab = $('#sumState');
+  if (!can){ $('#sumSect').style.display = 'none'; return; }
+  $('#sumSect').style.display = '';
+  clearInterval(sumPoll); sumPoll = null;
+  warn.style.display = 'none'; nx.style.display = 'none';
+  if (st === 'running'){
+    lab.innerHTML = `<span class="spin"></span>summarizing… ${Math.round((si.elapsed_ms||0)/1000)}s`;
+    btn.textContent = 'Working…'; btn.disabled = true;
+    sumPoll = setInterval(async () => {
+      if (curId !== can) return;
+      try { const r = await (await fetch('/api/summary/' + encodeURIComponent(can))).json(); renderSummary(r, can); if (r.state !== 'running'){ if (BY[can]) BY[can].summary = r.summary?.text || ''; window._lastSumText = r.summary?.text || window._lastSumText; render(); } } catch {}
+    }, 1500);
+    return;
+  }
+  btn.disabled = false; btn.textContent = sum ? 'Refresh summary' : 'Summarize';
+  if (st === 'error'){ warn.style.display = ''; warn.textContent = si.error || 'failed'; }
+  if (sum){
+    lab.textContent = (sum.outdated ? 'may be outdated · ' : '') + 'generated ' + new Date(sum.generated_at_ms).toLocaleString() + (sum.duration_ms ? ` · ${(sum.duration_ms/1000).toFixed(0)}s` : '');
+    if (sum.outdated){ warn.style.display = ''; warn.textContent = 'Session changed since this summary — refresh to update.'; }
+    window._lastSumText = sum.text; body.innerHTML = '<p>' + mdLite(sum.text) + '</p>';
+    if (nextStepFrom(sum.text)) nx.style.display = '';
+  } else { lab.textContent = ''; body.innerHTML = '<span class="mut">No summary yet. Click Summarize to review this session with Codex (read-only, on demand).</span>'; }
+}
+async function kickSummary(id){
+  $('#sumBtn').disabled = true; $('#sumState').innerHTML = '<span class="spin"></span>starting…';
+  try {
+    const r = await (await fetch('/api/summarize/' + encodeURIComponent(id), {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'})).json();
+    if (r.error) throw new Error(r.error);
+    renderSummary({state:'running', elapsed_ms:0}, id);
+  } catch (e) { renderSummary({state:'error', error:e.message}, id); }
+}
+
+document.addEventListener('keydown', e => { if (e.key === '/' && document.activeElement.tagName !== 'TEXTAREA' && document.activeElement.tagName !== 'INPUT'){ e.preventDefault(); $('#q').focus(); } if (e.key === 'Escape'){ $('#side').classList.remove('open'); } });
+load();
+setInterval(() => { if (!document.hidden) load(); }, 30000);
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+# personal data - never commit
+notes.db
+notes.db*
+*.bak*
+.summarize/
+# runtime
+__pycache__/
+*.pyc
+*.log
+tracker.log
